@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ISPY // Target Dossier Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.min.js"></script>
+  <style>
+    body { background: #0a0a0a; color: #00ff66; font-family: monospace; padding: 20px; }
+    .terminal { max-width: 800px; margin: 0 auto; border: 1px solid #00ff66; padding: 20px; box-shadow: 0 0 15px rgba(0,255,102,0.2); }
+    h1 { color: #ff3333; text-align: center; }
+    input, select, button { background: #111; color: #00ff66; border: 1px solid #00ff66; padding: 10px; margin: 5px 0; font-family: monospace; }
+    button { cursor: pointer; background: #00ff66; color: #000; font-weight: bold; }
+    button:hover { background: #00cc52; }
+    #output { white-space: pre-wrap; background: #111; padding: 15px; margin-top: 20px; border: 1px dashed #00ff66; display: none; }
+  </style>
+</head>
+<body>
+  <div class="terminal">
+    <h1>[ TOP SECRET // ISPY DOSSIER BUILDER ]</h1>
+    <label>Target Type:</label>
+    <select id="type">
+      <option value="username">GitHub Username</option>
+      <option value="domain">Web Domain</option>
+    </select>
+    
+    <label>Target Query:</label>
+    <input type="text" id="target" placeholder="e.g. torvalds or example.com" style="width: 100%; box-sizing: border-box;">
+    
+    <button onclick="generateDossier()">RUN RECONNAISSANCE</button>
+    <button id="pdfBtn" onclick="downloadPDF()" style="display:none; background: #ff3333; color: white;">EXPORT DOSSIER PDF</button>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    let currentReport = "";
+    let currentTarget = "";
+
+    async function generateDossier() {
+      const type = document.getElementById('type').value;
+      const target = document.getElementById('target').value.trim();
+      const output = document.getElementById('output');
+      const pdfBtn = document.getElementById('pdfBtn');
+
+      if (!target) return alert("Enter a target query!");
+
+      output.style.display = "block";
+      output.innerText = "[*] Initiating satellite scan & API reconnaissance...";
+      pdfBtn.style.display = "none";
+
+      try {
+        const res = await fetch('/.netlify/functions/dossier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, target })
+        });
+        
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        currentReport = data.report;
+        currentTarget = target;
+        output.innerText = data.report;
+        pdfBtn.style.display = "inline-block";
+      } catch (err) {
+        output.innerText = "[!] ERROR: " + err.message;
+      }
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFont("courier", "bold");
+      doc.setTextColor(220, 0, 0);
+      doc.text("[ TOP SECRET // EYES ONLY ]", 105, 15, { align: "center" });
+
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`TARGET BRIEF: ${currentTarget.toUpperCase()}`, 14, 28);
+      
+      doc.setFontSize(10);
+      doc.setFont("courier", "normal");
+      
+      const splitText = doc.splitTextToSize(currentReport, 180);
+      doc.text(splitText, 14, 38);
+
+      doc.save(`DOSSIER_${currentTarget}.pdf`);
+    }
+  </script>
+</body>
+</html>

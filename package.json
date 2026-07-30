@@ -1,0 +1,11 @@
+{
+  "name": "ispy-dossier-generator",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'No build step required for static frontend'"
+  },
+  "dependencies": {
+    "@netlify/functions": "^2.6.0",
+    "groq-sdk": "^0.3.3"
+  }
+}
