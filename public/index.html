@@ -2,90 +2,395 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ISPY // Target Dossier Generator</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISPY // Tactical Target Dossier</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { background: #0a0a0a; color: #00ff66; font-family: monospace; padding: 20px; }
-    .terminal { max-width: 800px; margin: 0 auto; border: 1px solid #00ff66; padding: 20px; box-shadow: 0 0 15px rgba(0,255,102,0.2); }
-    h1 { color: #ff3333; text-align: center; }
-    input, select, button { background: #111; color: #00ff66; border: 1px solid #00ff66; padding: 10px; margin: 5px 0; font-family: monospace; }
-    button { cursor: pointer; background: #00ff66; color: #000; font-weight: bold; }
-    button:hover { background: #00cc52; }
-    #output { white-space: pre-wrap; background: #111; padding: 15px; margin-top: 20px; border: 1px dashed #00ff66; display: none; }
+    :root {
+      --bg-color: #05080a;
+      --card-bg: #0c1015;
+      --accent-green: #00ff66;
+      --accent-red: #ff3344;
+      --accent-cyan: #00e5ff;
+      --text-muted: #6272a4;
+      --border-color: #1a2332;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--accent-green);
+      font-family: 'Courier New', Courier, monospace;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Tactical Header */
+    header {
+      background: var(--card-bg);
+      border: 1px solid var(--accent-red);
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(255, 51, 68, 0.15);
+      position: relative;
+    }
+
+    header h1 {
+      color: var(--accent-red);
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+    }
+
+    .status-bar {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+
+    /* Cards & Panel Styling */
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 4px;
+    }
+
+    .panel-title {
+      color: var(--accent-cyan);
+      font-size: 1rem;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+    }
+
+    /* Form Controls */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    label { font-size: 0.85rem; color: #a0a0a0; }
+
+    input, select {
+      background: #020406;
+      border: 1px solid var(--border-color);
+      color: var(--accent-green);
+      padding: 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent-green);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      background: var(--accent-green);
+      color: #000;
+      border: none;
+      padding: 12px 20px;
+      font-family: inherit;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      box-shadow: 0 0 10px rgba(0, 255, 102, 0.4);
+    }
+
+    button.btn-danger {
+      background: var(--accent-red);
+      color: #fff;
+    }
+
+    button.btn-danger:hover {
+      box-shadow: 0 0 10px rgba(255, 51, 68, 0.4);
+    }
+
+    /* Output Terminal */
+    #dossierOutput {
+      white-space: pre-wrap;
+      background: #020406;
+      border: 1px solid var(--border-color);
+      padding: 15px;
+      min-height: 150px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    /* Chatbox Component */
+    .chat-window {
+      height: 250px;
+      overflow-y: auto;
+      background: #020406;
+      border: 1px solid var(--border-color);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .chat-msg {
+      max-width: 80%;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .chat-msg.user {
+      align-self: flex-end;
+      background: #111e2e;
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .chat-msg.agent {
+      align-self: flex-start;
+      background: #121811;
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input-row input {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
-  <div class="terminal">
-    <h1>[ TOP SECRET // ISPY DOSSIER BUILDER ]</h1>
-    <label>Target Type:</label>
-    <select id="type">
-      <option value="username">GitHub Username</option>
-      <option value="domain">Web Domain</option>
-    </select>
-    
-    <label>Target Query:</label>
-    <input type="text" id="target" placeholder="e.g. torvalds or example.com" style="width: 100%; box-sizing: border-box;">
-    
-    <button onclick="generateDossier()">RUN RECONNAISSANCE</button>
-    <button id="pdfBtn" onclick="downloadPDF()" style="display:none; background: #ff3333; color: white;">EXPORT DOSSIER PDF</button>
 
-    <div id="output"></div>
+  <div class="container">
+    <header>
+      <h1>[ TOP SECRET // ISPY DOSSIER SYSTEM ]</h1>
+      <div class="status-bar">AGENT TERMINAL v2.4 // AUTHORIZED EYES ONLY</div>
+    </header>
+
+    <div class="panel">
+      <div class="panel-title">// TARGET RECONNAISSANCE PARAMETERS</div>
+      
+      <div class="form-group">
+        <label for="targetType">Select Target Vector:</label>
+        <select id="targetType" onchange="updatePlaceholder()">
+          <option value="username">GitHub Username</option>
+          <option value="domain">Web Domain</option>
+          <option value="email">Email Address</option>
+          <option value="phone">Phone Number</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="targetInput">Target Identifier:</label>
+        <input type="text" id="targetInput" placeholder="e.g. octocat">
+      </div>
+
+      <div class="btn-group">
+        <button onclick="runRecon()">EXECUTE RECON</button>
+        <button id="pdfBtn" class="btn-danger" style="display: none;" onclick="exportPDF()">EXPORT DOSSIER PDF</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">// GENERATED INTELLIGENCE BRIEF</div>
+      <div id="dossierOutput">Awaiting target parameters...</div>
+    </div>
+
+    <div class="panel" id="chatPanel" style="display: none;">
+      <div class="panel-title">// INTERACTIVE INTEL ANALYST CHAT</div>
+      
+      <div class="chat-window" id="chatWindow">
+        <div class="chat-msg agent">Target briefing loaded. Ask any follow-up questions regarding this intelligence record.</div>
+      </div>
+
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Ask follow-up question (e.g. What are the main risk factors?)" onkeypress="handleKeyPress(event)">
+        <button onclick="sendChatMessage()">SEND</button>
+      </div>
+    </div>
   </div>
 
   <script>
     let currentReport = "";
     let currentTarget = "";
 
-    async function generateDossier() {
-      const type = document.getElementById('type').value;
-      const target = document.getElementById('target').value.trim();
-      const output = document.getElementById('output');
-      const pdfBtn = document.getElementById('pdfBtn');
+    function updatePlaceholder() {
+      const type = document.getElementById("targetType").value;
+      const input = document.getElementById("targetInput");
+      
+      if (type === "username") input.placeholder = "e.g. octocat";
+      else if (type === "domain") input.placeholder = "e.g. github.com";
+      else if (type === "email") input.placeholder = "e.g. target@domain.com";
+      else if (type === "phone") input.placeholder = "e.g. +1234567890";
+    }
 
-      if (!target) return alert("Enter a target query!");
+    async function runRecon() {
+      const type = document.getElementById("targetType").value;
+      const target = document.getElementById("targetInput").value.trim();
+      const output = document.getElementById("dossierOutput");
+      const pdfBtn = document.getElementById("pdfBtn");
+      const chatPanel = document.getElementById("chatPanel");
 
-      output.style.display = "block";
-      output.innerText = "[*] Initiating satellite scan & API reconnaissance...";
+      if (!target) return alert("Enter target identifier before initiating scan!");
+
+      output.innerText = "[*] Accessing satellite nodes and public registers...\n[*] Running automated OSINT extraction...";
       pdfBtn.style.display = "none";
+      chatPanel.style.display = "none";
 
       try {
-        const res = await fetch('/.netlify/functions/dossier', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type, target })
+        const res = await fetch("/.netlify/functions/dossier", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "generate", type, target })
         });
-        
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error(`Server returned status ${res.status}`);
+        }
+
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
         currentReport = data.report;
         currentTarget = target;
         output.innerText = data.report;
+
         pdfBtn.style.display = "inline-block";
+        chatPanel.style.display = "block";
       } catch (err) {
-        output.innerText = "[!] ERROR: " + err.message;
+        output.innerText = "[!] RECON FAILED: " + err.message;
       }
     }
 
-    function downloadPDF() {
+    async function sendChatMessage() {
+      const input = document.getElementById("chatInput");
+      const window = document.getElementById("chatWindow");
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      // Add User Message
+      appendMessage(message, "user");
+      input.value = "";
+
+      // Add loading state
+      const loadingDiv = appendMessage("[*] Querying intelligence database...", "agent");
+
+      try {
+        const res = await fetch("/.netlify/functions/dossier", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "chat",
+            context: currentReport,
+            question: message
+          })
+        });
+
+        const data = await res.json();
+        loadingDiv.innerText = data.reply || "No response received.";
+      } catch (err) {
+        loadingDiv.innerText = "[!] ERROR: Unable to process query.";
+      }
+    }
+
+    function appendMessage(text, sender) {
+      const chatWindow = document.getElementById("chatWindow");
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `chat-msg ${sender}`;
+      msgDiv.innerText = text;
+      chatWindow.appendChild(msgDiv);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      return msgDiv;
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === "Enter") sendChatMessage();
+    }
+
+    function exportPDF() {
+      if (!currentReport) return alert("No active report to export!");
+
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 15;
+      const maxLineWidth = pageWidth - (margin * 2);
+      let y = 20;
+
+      // Header
       doc.setFont("courier", "bold");
-      doc.setTextColor(220, 0, 0);
-      doc.text("[ TOP SECRET // EYES ONLY ]", 105, 15, { align: "center" });
-
       doc.setFontSize(14);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`TARGET BRIEF: ${currentTarget.toUpperCase()}`, 14, 28);
-      
-      doc.setFontSize(10);
-      doc.setFont("courier", "normal");
-      
-      const splitText = doc.splitTextToSize(currentReport, 180);
-      doc.text(splitText, 14, 38);
+      doc.setTextColor(200, 0, 0);
+      doc.text("[ TOP SECRET // EYES ONLY ]", pageWidth / 2, y, { align: "center" });
 
-      doc.save(`DOSSIER_${currentTarget}.pdf`);
+      y += 10;
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`TARGET BRIEF: ${currentTarget.toUpperCase()}`, margin, y);
+
+      y += 5;
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(200, 0, 0);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      // Clean non-ASCII & Markdown
+      const cleanReport = currentReport.replace(/[^\x00-\x7F]/g, "").replace(/\*\*/g, "");
+
+      doc.setFont("courier", "normal");
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(cleanReport, maxLineWidth);
+
+      lines.forEach(line => {
+        if (y > pageHeight - 20) {
+          doc.addPage();
+          y = 20;
+          doc.setFont("courier", "italic");
+          doc.setFontSize(8);
+          doc.setTextColor(128, 128, 128);
+          doc.text(`[ TOP SECRET // ${currentTarget.toUpperCase()} - CONTINUED ]`, margin, y);
+          y += 10;
+          doc.setFont("courier", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(0, 0, 0);
+        }
+        doc.text(line, margin, y);
+        y += 5;
+      });
+
+      doc.save(`DOSSIER_${currentTarget.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
     }
   </script>
 </body>
