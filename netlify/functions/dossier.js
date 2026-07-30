@@ -6,72 +6,75 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { target, type } = JSON.parse(event.body);
-    let rawData = {};
+    const body = JSON.parse(event.body);
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-    // 1. Fetch OSINT Data
-    if (type === "username") {
-      const userRes = await fetch(`https://api.github.com/users/${target}`);
-      if (!userRes.ok) throw new Error("GitHub target not found.");
-      const userData = await userRes.json();
+    // --- ACTION 1: Chat Message ---
+    if (body.action === "chat") {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are an intelligence analyst helper. Answer the user's question concisely using the provided dossier context."
+          },
+          {
+            role: "user",
+            content: `DOSSIER CONTEXT:\n${body.context}\n\nUSER QUESTION:\n${body.question}`
+          }
+        ],
+        model: "llama-3.3-70b-versatile"
+      });
 
-      const reposRes = await fetch(userData.repos_url);
-      const reposData = reposRes.ok ? await reposRes.json() : [];
-
-      rawData = {
-        type: "username",
-        target: target,
-        name: userData.name,
-        bio: userData.bio,
-        location: userData.location,
-        followers: userData.followers,
-        public_repos: userData.public_repos,
-        repos: Array.isArray(reposData) ? reposData.slice(0, 5).map(r => r.name) : []
-      };
-    } else if (type === "domain") {
-      const waybackRes = await fetch(`https://archive.org/wayback/available?url=${target}`);
-      const waybackData = await waybackRes.json();
-      const snapshot = waybackData.archived_snapshots?.closest;
-
-      rawData = {
-        type: "domain",
-        target: target,
-        is_archived: snapshot ? snapshot.available : false,
-        latest_snapshot: snapshot ? snapshot.timestamp : null,
-        url: snapshot ? snapshot.url : null
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: chatCompletion.choices[0]?.message?.content })
       };
     }
 
-    // 2. Synthesize Intelligence via Groq AI
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    const prompt = `
-    You are an elite intelligence analyst creating a classified target dossier.
-    Synthesize this target data into a structured report:
-    ${JSON.stringify(rawData, null, 2)}
+    // --- ACTION 2: Generate Initial Dossier ---
+    const { target, type } = body;
+    let rawData = { target, type };
 
-    Include:
+    if (type === "username") {
+      const res = await fetch(`https://api.github.com/users/${target}`);
+      if (res.ok) rawData.github = await res.json();
+    } else if (type === "domain") {
+      const res = await fetch(`https://archive.org/wayback/available?url=${target}`);
+      if (res.ok) rawData.wayback = await res.json();
+    } else if (type === "email" || type === "phone") {
+      // Formatted structured placeholder for email/phone target synthesis
+      rawData.identifier = target;
+      rawData.vector = type;
+    }
+
+    const prompt = `
+    You are an elite intelligence analyst creating a classified target dossier for a target with vector "${type}" and value "${target}".
+    Data available: ${JSON.stringify(rawData, null, 2)}
+
+    Format the brief as follows:
     1. TARGET IDENTIFICATION
-    2. KEY INTELLIGENCE SUMMARY (3-4 bullets)
-    3. KNOWN ASSETS & TIMELINES
-    4. THREAT / EXPOSURE RATING (Low/Medium/High with reasoning)
+    2. KEY INTELLIGENCE SUMMARY (3-4 concise points)
+    3. EXPOSURE & RISK ASSESSMENT
     `;
 
-const chatCompletion = await groq.chat.completions.create({
-  messages: [{ role: "user", content: prompt }],
-  model: "llama-3.3-70b-versatile",
-});
-
-    const report = chatCompletion.choices[0]?.message?.content || "No intel generated.";
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.3-70b-versatile"
+    });
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rawData, report }),
+      body: JSON.stringify({
+        report: chatCompletion.choices[0]?.message?.content || "No intelligence produced."
+      })
     };
   } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: error.message })
     };
   }
 };
