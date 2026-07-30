@@ -56,10 +56,10 @@ exports.handler = async (event) => {
     4. THREAT / EXPOSURE RATING (Low/Medium/High with reasoning)
     `;
 
-    const chatCompletion = await groq.chatCompletions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.3-70b-versatile",
-    });
+const chatCompletion = await groq.chat.completions.create({
+  messages: [{ role: "user", content: prompt }],
+  model: "llama-3.3-70b-versatile",
+});
 
     const report = chatCompletion.choices[0]?.message?.content || "No intel generated.";
 
