@@ -93,7 +93,7 @@ exports.handler = async (event) => {
           { role: "system", content: "You are an elite counter-intelligence analyst. Answer follow-up queries using the target dossier context." },
           { role: "user", content: `DOSSIER CONTEXT:\n${body.context}\n\nUSER QUESTION:\n${body.question}` }
         ],
-        model: "llama-3.3-70b-versatile"
+        model: "openai/gpt-oss-20b"
       });
 
       return {
